@@ -4,13 +4,18 @@ import {createAppContainer} from 'react-navigation';
 import {createBottomTabNavigator} from 'react-navigation-tabs';
 import WriteStoryScreen from './screens/WriteStoryScreen';
 import ReadStoryScreen from './screens/ReadStoryScreen';
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
-export default class App extends React.Component{
-    render(){
-        return(
-            <AppContainer/>
-        );
-    }
+export default class App extends React.Component {
+  render(){
+    return(
+       <SafeAreaProvider>
+
+      <AppContainer />
+
+       </SafeAreaProvider>
+    );
+  }
 }
 
 const TabNavigator = createBottomTabNavigator({

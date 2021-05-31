@@ -1,101 +1,136 @@
 import React from 'react';
-import { StyleSheet , Text , View , FlatList , ScrollView } from 'react-native'
-import { SearchBar , Header } from 'react-native-elements';
+import { Text, View, FlatList, StyleSheet, TextInput, TouchableOpacity} from 'react-native';
 import db from '../config'
-
-export default class ReadStoryScreen extends React.Component {
-    constructor(){
-        super();
-        this.state ={
-            allStories: [],
-            dataSource: [],
-            search: ''
-        }
-    }
-        componentDidMount(){
-            this.retrieveStories()
-        }
-
-        updateSearch = search => {
-            this.setState({ search });
-        };
+import { ScrollView } from 'react-native-gesture-handler';
 
 
-        retrieveStories=()=>{
-            try {
-                var allStories = []
-                var stories = db.collection("stories")
-                .get().then((querySnapshot)=> {
-                    querySnapshot.forEach((doc)=> {
-                        allStories.push(doc.data())
-                        console.log('these are the stories', allStories)
-                    })
-                    this.setState({allStories})
-                })
-            }
-        
-            finally{
 
-            }
-        };
-
-
-        SearchFilterFunction(text) {
-            const newData = this.state.allStories.filter((item)=> {
-                const itemData = item.title ? item.title.toUpperCase() : ''.toUpperCase();
-                const textData = text.toUpperCase();
-                return itemData.indexOf(textData) > -1;
-            });
-            this.setState({
-                dataSource: newData,
-                search: text,
-            });
-        }
-
-        render(){
-            return(
-                <View style ={StyleSheet.container}>
-                    <Header
-                    backgroundColor = {'pink'}
-                    centerComponent = {{
-                        text : "Bed Time Stories",
-                        style: { color: "white", fontSize: 20}
-                    }}
-                    />
-                    <View styles ={{height:20, width: '100%'}}>
-                        <SearchBar
-                        placeholder = "Type Here..."
-                        onChangeText = {text => this.SearchFilterFunction('')}
-                        value={this.state.search}
-                        />
-                    </View>
-
-
-                </View>
-            );
-        }
+export default class Searchscreen extends React.Component {
+    constructor(props){
+      super(props)
+      this.state = {
+        allTransactions: [],
+        lastVisibleTransaction: null,
+        search:''
+      }
     }
 
+    fetchMoreTransactions = async ()=>{
+      var text = this.state.search.toUpperCase()
+      var enteredText = text.split("")
 
-    const styles = StyleSheet.create({
-        container: {
-            backgroundColor: "#fff"
-        },
-        item: {
-            backgroundColor: 'pink',
-            padding: 10,
-            marginVertical: 8,
-            marginHorizontal: 16
-        },
-        title: {
-            fontSize: 32,
-        },
-        itemContainer: {
-            height:80,
-            width: '100%',
-            borderWidth: 2,
-            borderColor: 'pink',
-            justifyContent: 'center',
-            alignSelf: 'center',
-        }
-    })
+      
+      if (enteredText[0].toUpperCase() ==='B'){
+      const query = await db.collection("transaction").where('bookId','==',text).startAfter(this.state.lastVisibleTransaction).limit(10).get()
+      query.docs.map((doc)=>{
+        this.setState({
+          allTransactions: [...this.state.allTransactions, doc.data()],
+          lastVisibleTransaction: doc
+        })
+      })
+    }
+      else if(enteredText[0].toUpperCase() === 'S'){
+        const query = await db.collection("transaction").where('bookId','==',text).startAfter(this.state.lastVisibleTransaction).limit(10).get()
+        query.docs.map((doc)=>{
+          this.setState({
+            allTransactions: [...this.state.allTransactions, doc.data()],
+            lastVisibleTransaction: doc
+          })
+        })
+      }
+  }
+
+    searchTransactions= async(text) =>{
+      var enteredText = text.split("")  
+      if (enteredText[0].toUpperCase() ==='B'){
+        const transaction =  await db.collection("transaction").where('bookId','==',text).get()
+        transaction.docs.map((doc)=>{
+          this.setState({
+            allTransactions:[...this.state.allTransactions,doc.data()],
+            lastVisibleTransaction: doc
+          })
+        })
+      }
+      else if(enteredText[0].toUpperCase() === 'S'){
+        const transaction = await db.collection('transaction').where('studentId','==',text).get()
+        transaction.docs.map((doc)=>{
+          this.setState({
+            allTransactions:[...this.state.allTransactions,doc.data()],
+            lastVisibleTransaction: doc
+          })
+        })
+      }
+    }
+
+    componentDidMount = async ()=>{
+      const query = await db.collection("transaction").limit(10).get()
+      query.docs.map((doc)=>{
+        this.setState({
+          allTransactions: [],
+          lastVisibleTransaction: doc
+        })
+      })
+    }
+    render() {
+      return (
+        <View style={styles.container}>
+          <View style={styles.searchBar}>
+        <TextInput 
+          style ={styles.bar}
+          placeholder = "Enter Book Id or Student Id"
+          onChangeText={(text)=>{this.setState({search:text})}}/>
+          <TouchableOpacity
+            style = {styles.searchButton}
+            onPress={()=>{this.searchTransactions(this.state.search)}}
+          >
+            <Text>Search</Text>
+          </TouchableOpacity>
+          </View>
+        <FlatList
+          data={this.state.allTransactions}
+          renderItem={({item})=>(
+            <View style={{borderBottomWidth: 2}}>
+              <Text>{"Book Id: " + item.bookId}</Text>
+              <Text>{"Student id: " + item.studentId}</Text>
+              <Text>{"Transaction Type: " + item.transactionType}</Text>
+              <Text>{"Date: " + item.date.toDate()}</Text>
+            </View>
+          )}
+          keyExtractor= {(item, index)=> index.toString()}
+          onEndReached ={this.fetchMoreTransactions}
+          onEndReachedThreshold={0.7}
+        /> 
+        </View>
+      );
+    }
+  }
+
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      marginTop: 20
+    },
+    searchBar:{
+      flexDirection:'row',
+      height:40,
+      width:'auto',
+      borderWidth:0.5,
+      alignItems:'center',
+      backgroundColor:'grey',
+    },
+    bar:{
+      borderWidth:2,
+      height:30,
+      width:300,
+      paddingLeft:10,
+    },
+    searchButton:{
+      borderWidth:1,
+      height:30,
+      width:50,
+      alignItems:'center',
+      justifyContent:'center',
+      backgroundColor:'green'
+    }
+  })
